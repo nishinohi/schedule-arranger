@@ -158,11 +158,18 @@ router.post('/:scheduleId', authenticationEnsurer, (req, res, next) => {
             next(err);
             return;
         }
-        if (parseInt(req.query.edit) !== 1) {
+        // 更新でも削除でもないクエリは不正
+        if (parseInt(req.query.edit) !== 1 &&
+            parseInt(req.query.delete) !== 1) {
             const err = new Error('不正なリクエストです');
             err.status = 400;
             next(err);
             return;
+        }
+        if (parseInt(req.query.delete) === 1) {
+            deleteScheduleAggregate(req.params.scheduleId, () => {
+                res.redirect('/');
+            })
         }
         const updatedAt = new Date();
         schedule.update({
@@ -203,5 +210,34 @@ function createCnadidatesAndRedirect(candidateNames, scheduleId, res) {
     });
 }
 
+function deleteScheduleAggregate(scheduleId, done, err) {
+    const promiseCommentDestroy = Comment.findAll({
+        where: { scheduleId: scheduleId }
+    }).then((comments) => {
+        return Promise.all(comments.map((c) => { return c.destroy(); }));
+    });
+
+    Availability.findAll({
+        where: { scheduleId: scheduleId }
+    }).then((availabilities) => {
+        const promises = availabilities.map((a) => { return a.destroy(); });
+        return Promise.all(promises);
+    }).then(() => {
+        return Candidate.findAll({
+            where: { scheduleId: scheduleId }
+        });
+    }).then((candidates) => {
+        const promises = candidates.map((c) => { return c.destroy(); });
+        promises.push(promiseCommentDestroy);
+        return Promise.all(promises);
+    }).then(() => {
+        return Schedule.findById(scheduleId).then((s) => { return s.destroy(); });
+    }).then(() => {
+        if (err) return done(err);
+        done();
+    });
+}
+
+router.deleteScheduleAggregate = deleteScheduleAggregate;
 
 module.exports = router;
