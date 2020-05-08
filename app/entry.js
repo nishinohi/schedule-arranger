@@ -1,5 +1,8 @@
 'use strict';
 import $ from 'jquery';
+const global = Function('return this;')();
+global.jQuery = $;
+import bootstrap from 'bootstrap';
 
 $('.availability-toggle-button').each((i, e) => {
     const button = $(e);
@@ -13,8 +16,11 @@ $('.availability-toggle-button').each((i, e) => {
             { availability: nextAvailability },
             (data) => {
                 button.data('availability', data.availability);
-                const availabilityLables = ['❌', '❓', '⭕'];
+                const availabilityLables = ['欠', '？', '出'];
                 button.text(availabilityLables[data.availability]);
+                const buttonStyles = ['btn-danger', 'btn-secondary', 'btn-success'];
+                button.removeClass('btn-danger btn-secondary btn-success');
+                button.addClass(buttonStyles[data.availability]);
             });
     });
 });
